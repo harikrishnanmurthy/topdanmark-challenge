@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Properties>
+ 	<Property name="ENV">${sys:spring.profiles.active}</Property>
+    <Property name="LOG_PATH">/data/log/${sys:spring.profiles.active}</Property>
+    <Property name="LOG_FILE">tp-insurance-api</Property>
+  </Properties> 
+  
+    <Appenders>
+        <RollingFile name="FILE" fileName="${LOG_PATH}/${LOG_FILE}/${LOG_FILE}.log" 
+                 filePattern="${LOG_PATH}/${LOG_FILE}/archived/${LOG_FILE}.%d{yyyy-MM-dd}.%i.log.gz">
+            <LogStashJSONLayout/>
+ 	        <SizeBasedTriggeringPolicy size="100 MB" /> 
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+        <RollingFile name="LOGGER" fileName="${LOG_PATH}/${LOG_FILE}/${LOG_FILE}-payload.log" 
+                 filePattern="${LOG_PATH}/${LOG_FILE}/archived/${LOG_FILE}.%d{yyyy-MM-dd}-payload.%i.log.gz">
+             <LogStashJSONLayout/>
+ 	        <SizeBasedTriggeringPolicy size="100 MB" /> 
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>        
+        <Console name="STDOUT" target="SYSTEM_OUT">
+     		<PatternLayout pattern="%d [%t] %-5p %c - %m%n" />
+   		</Console>
+    </Appenders>
+    
+    
+    <Loggers>
+        <AsyncLogger name="com.scb" level="INFO"/>
+        <AsyncLogger name="com.netflix.discovery.shared.resolver.aws.ConfigClusterResolver" level="OFF"/>
+      
+        <AsyncLogger name="payload.logger" level="OFF" additivity="false">
+            <AppenderRef ref="LOGGER" level="OFF"/>
+             <AppenderRef ref="STDOUT" />
+        </AsyncLogger>
+        
+        <AsyncRoot level="INFO" additivity="false">
+            <AppenderRef ref="FILE" level="INFO"/>
+            <AppenderRef ref="STDOUT" level="INFO"/>
+        </AsyncRoot>
+    </Loggers>
+</Configuration>

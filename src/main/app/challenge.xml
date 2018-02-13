@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:https="http://www.mulesoft.org/schema/mule/https"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/https http://www.mulesoft.org/schema/mule/https/current/mule-https.xsd 
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd 
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+    
+	<apikit:config name="challenge-api-config" raml="challenge.raml"
+		consoleEnabled="true" consolePath="console" doc:name="Router" />
+
+	<configuration defaultResponseTimeout="3000000" />
+	
+	<flow name="challenge-api-main">
+		<http:listener config-ref="httpListenerConfig" path="/topdanmark/*"
+			doc:name="HTTP" />
+		<logger level="INFO" message="iNSIDE ***" />
+		<apikit:router config-ref="challenge-api-config" doc:name="APIkit Router" />
+		<logger level="INFO" message="iNSIDE 1***" />
+		<exception-strategy ref="challenge-api-apiKitGlobalExceptionMapping"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+	
+	<json:json-to-object-transformer returnClass="java.lang.Object" name="jsontoObj" />
+	<json:object-to-json-transformer name="objtoJson" />
+	<json:xml-to-json-transformer name="xmltoJson" />
+	<json:json-to-xml-transformer name="jsontoXml" />
+	<custom-transformer	class="com.scb.ms.mule.transformer.CustomDistributionTransformer" name="distributionTransformer" doc:name="Java" />
+	
+	<flow name="post:/challenge:challenge-api-config">	
+		<logger level="INFO" message="******* Invoking Challenge REST API *******" />
+		<transformer ref="jsontoObj" />	 
+		<set-variable variableName="customerId" value="#[message.payload.customerId]" />
+		<set-variable variableName="policyId" value="#[message.payload.policyId]" />	
+		<logger message="Policy ID from request : #[message.payload.policyId]" level="INFO" />
+		<transformer ref="objtoJson" />	 
+		<scatter-gather timeout="5000" doc:name="Scatter-Gather">
+			<custom-aggregation-strategy class="com.scb.ms.mule.transformer.CustomSGAggregationStrategy"/>
+			<flow-ref name="Policy_Flow" doc:name="Policy Rest Service"/>
+			<flow-ref name="CRM_ReadFlow" doc:name="CRM Queue Service"/>
+		</scatter-gather>	
+		<combine-collections-transformer doc:name="Combine Results"/>
+		<transformer ref="objtoJson" />	 
+		<transformer ref="jsontoObj" />	 
+		<transformer ref="distributionTransformer" />
+		<flow-ref name="SOAP_WS_Flow" doc:name="Distribution SOAP Service"/>
+	</flow>
+	
+	<apikit:mapping-exception-strategy
+		name="challenge-api-apiKitGlobalExceptionMapping">
+		<apikit:mapping statusCode="404">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.NotFoundException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload
+				value="{ &quot;message&quot;: &quot;Resource not found&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="405">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload
+				value="{ &quot;message&quot;: &quot;Method not allowed&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="415">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload
+				value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="406">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.NotAcceptableException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="400">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.BadRequestException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+	</apikit:mapping-exception-strategy>
+</mule>

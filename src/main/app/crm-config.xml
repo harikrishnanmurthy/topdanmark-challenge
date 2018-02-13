@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+
+	<jms:activemq-connector name="Active_MQ" brokerURL="tcp://localhost:61616" validateConnections="true" doc:name="Active MQ" />
+	
+	<flow name="writeFlow">
+		<byte-array-to-string-transformer doc:name="Byte Array to String" />
+		<jms:outbound-endpoint queue="cust_request" connector-ref="Active_MQ" doc:name="JMS" />
+	</flow>
+	
+	<flow name="CRM_ReadFlow">
+		<jms:inbound-endpoint queue="cust_response" connector-ref="Active_MQ" doc:name="JMS"/>
+		<set-payload value="{
+	&quot;name&quot; : &quot;John Doe&quot;,
+	&quot;street_1&quot; : &quot;Main Street&quot;,
+	&quot;street_2&quot; : &quot;&quot;,
+	&quot;zipcode&quot; : 55667,
+	&quot;city&quot; : &quot;Stoneville&quot;,
+	&quot;country&quot; : &quot;Denmark&quot;
+
+}" 
+		doc:name="Set Payload"/>
+		<transformer ref="jsontoObj" />
+	</flow>
+</mule>

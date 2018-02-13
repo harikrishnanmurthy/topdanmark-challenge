@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:cluster="http://www.mulesoft.org/schema/mule/ee/cluster" xmlns:json="http://www.mulesoft.org/schema/mule/json"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:servlet="http://www.mulesoft.org/schema/mule/servlet"
+	xmlns:kafka-connector="http://www.mulesoft.org/schema/mule/kafka-connector" 
+    xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka"  
+    xmlns:mule-kafka="http://www.mulesoft.org/schema/mule/mule-kafka"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/mule-kafka http://www.mulesoft.org/schema/mule/mule-kafka/current/mule-mule-kafka.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/servlet http://www.mulesoft.org/schema/mule/servlet/current/mule-servlet.xsd
+http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd 
+http://www.mulesoft.org/schema/mule/kafkainbound http://www.mulesoft.org/schema/mule/kafkainbound/current/mule-kafkainbound.xsd">
+
+	<http:listener-config name="httpListenerConfig"	host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+	
+	<http:connector name="HttpNoSessionConnector" doc:name="HTTP-HTTPS">
+		<service-overrides sessionHandler="org.mule.session.NullSessionHandler" />
+	</http:connector>
+	
+	<object-to-string-transformer name="ObjectToString"	doc:name="Object to String" />
+    <json:json-to-object-transformer  name="JSONToObject" doc:name="JSON to Object"/>
+    
+	<apikit:mapping-exception-strategy
+		name="apiKitGlobalExceptionMapping">
+		<apikit:mapping statusCode="404">
+			<apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload value="{ &quot;message&quot;: &quot;Resource not found&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="405">
+			<apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload value="{ &quot;message&quot;: &quot;Method not allowed&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="415">
+			<apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="406">
+			<apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="400">
+			<apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="500">
+			<apikit:exception value="org.mule.api.MessagingException" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload value="{ &quot;message&quot;: &quot;Internal Server Error&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+	</apikit:mapping-exception-strategy>
+
+    <sub-flow name="sendErrorResponse">
+      <set-payload value="#[flowVars['origPayload']]" doc:name="Set Payload"/>
+      <transformer ref="ErrorResponseTransformer" doc:name="Error Response Transformer" />
+      <gzip-compress-transformer />
+      <logger level="INFO" message="Sending error response Payload" doc:name="Logger"/>
+    </sub-flow>
+
+    <sub-flow name="sendUnCompressErrorResponse">
+      <set-payload value="#[flowVars['origPayload']]" doc:name="Set Payload"/>
+      <transformer ref="ErrorResponseTransformer" doc:name="Error Response Transformer" />
+      <logger level="INFO" message="Sending error response Payload" doc:name="Logger"/>
+    </sub-flow>
+        
+    <sub-flow name="getOriginalPayload">
+      <choice doc:name="Choice">
+			<when expression="#[flowVars['origPayload'] == null]">
+  			   <logger message="setting Original Payload..." level="INFO" doc:name="Logger" />
+ 	 			<set-variable variableName="origPayload" value="#[payload]" doc:name="Variable"/>
+			</when>
+			<otherwise>
+				<logger message="not setting origPayload as it was already set..." level="INFO" doc:name="Logger" />
+			</otherwise>
+		</choice>			
+    </sub-flow>
+    
+    
+	<sub-flow name="compressBytePayload">
+	    <byte-array-to-string-transformer doc:name = "Byte Array to String" />
+		<flow-ref name="compressPayload" doc:name="Compress payload"/>
+	</sub-flow>       
+   
+   	<sub-flow name="compressPayload">
+		<logger message="Before compression size is #[String.format('%.2f', Integer.parseInt(payload.length())/1024)] KB" level="INFO" doc:name="Logger" />
+		<gzip-compress-transformer />
+		<logger message="After compression size is #[String.format('%.2f', Integer.parseInt(payload.size())/1024)] KB" level="INFO" doc:name="Logger" />
+	</sub-flow>  
+   
+   	<sub-flow name="compressPayloadFlow">
+		<gzip-compress-transformer />
+	</sub-flow>   
+	    		
+	<sub-flow name="decompressPayload">
+	<byte-array-to-string-transformer doc:name = "Byte Array to String" />
+		<logger message="Before decompression size is #[String.format('%.2f', Integer.parseInt(payload.length())/1024)] KB" level="INFO" doc:name="Logger" />
+		<gzip-uncompress-transformer />
+		<logger message="After decompression size is #[String.format('%.2f', Integer.parseInt(payload.size())/1024)] KB" level="INFO" doc:name="Logger" />
+	</sub-flow>       
+
+</mule>

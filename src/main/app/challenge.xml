@@ -43,7 +43,8 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
 		<scatter-gather timeout="5000" doc:name="Scatter-Gather">
 			<custom-aggregation-strategy class="com.scb.ms.mule.transformer.CustomSGAggregationStrategy"/>
 			<flow-ref name="Policy_Flow" doc:name="Policy Rest Service"/>
-			<flow-ref name="CRM_ReadFlow" doc:name="CRM Queue Service"/>
+			<flow-ref name="writeFlow" doc:name="CRM Queue Service write"/>
+			<flow-ref name="CRM_ReadFlow" doc:name="CRM Queue Service read"/>
 		</scatter-gather>	
 		<combine-collections-transformer doc:name="Combine Results"/>
 		<transformer ref="objtoJson" />	 

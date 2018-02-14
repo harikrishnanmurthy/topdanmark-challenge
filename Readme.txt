@@ -1,4 +1,4 @@
-Challenge Mule flow has been designed using XML editor. Mule CE is embedded in a spring boot application (microservice) using mule-spring-boot-starter
+Challenge Mule flow has been designed using XML editor. The Mule CE used to execute this flow is an embedded Mule ESB in a spring boot application (microservice architecture) using mule-spring-boot-starter
 
 Solution outline
 ----------------

@@ -24,3 +24,4 @@ Download activemq-all-5.8.0.jar and place it in the classpath of the eclipse pro
 Download mule-plugin-weave-4.0 from mule repository and place it in the classpath of the eclipse project.
 Configure maven build and set goal as mvn clean install.
 Upon successful building, run SCBMuleApplication.java as a java application(to boot up the embedded mule).
+Access raml console at http://localhost:8081/topdanmark/console/

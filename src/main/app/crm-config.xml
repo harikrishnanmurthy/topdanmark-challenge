@@ -14,8 +14,9 @@ http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/m
 	<jms:activemq-connector name="Active_MQ" brokerURL="tcp://localhost:61616" validateConnections="true" doc:name="Active MQ" />
 	
 	<flow name="writeFlow">
-		<byte-array-to-string-transformer doc:name="Byte Array to String" />
+<!-- 		<byte-array-to-string-transformer doc:name="Byte Array to String" /> -->
 		<jms:outbound-endpoint queue="cust_request" connector-ref="Active_MQ" doc:name="JMS" />
+		<transformer ref="jsontoObj" />
 	</flow>
 	
 	<flow name="CRM_ReadFlow">
@@ -30,6 +31,17 @@ http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/m
 
 }" 
 		doc:name="Set Payload"/>
+<!-- 		<logger message="Payload size before transform : #[message.payload.size]" level="INFO" /> -->
 		<transformer ref="jsontoObj" />
+		<logger message="Payload size after transform : #[message.payload.size]" level="INFO" />
+		<choice	>
+			<when expression="#[message.payload.size != 0]">
+				<logger message="Payload size inside when : #[message.payload.size]" level="INFO" />
+			</when>
+			<otherwise>
+				<set-property propertyName="http.status" value="503"/>
+				<set-payload value="Service Unavailable, 503"/>
+			</otherwise>
+		</choice>
 	</flow>
 </mule>

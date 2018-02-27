@@ -41,7 +41,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
 		<logger message="Policy ID from request : #[message.payload.policyId]" level="INFO" />
 		<transformer ref="objtoJson" />	 
 		<scatter-gather timeout="5000" doc:name="Scatter-Gather">
-			<custom-aggregation-strategy class="com.scb.ms.mule.transformer.CustomSGAggregationStrategy"/>
+<!-- 			<custom-aggregation-strategy class="com.scb.ms.mule.transformer.CustomSGAggregationStrategy"/> -->
 			<flow-ref name="Policy_Flow" doc:name="Policy Rest Service"/>
 			<flow-ref name="writeFlow" doc:name="CRM Queue Service write"/>
 			<flow-ref name="CRM_ReadFlow" doc:name="CRM Queue Service read"/>
@@ -96,6 +96,14 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
 			<set-property propertyName="Content-Type" value="application/json"
 				doc:name="Property" />
 			<set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }"
+				doc:name="Set Payload" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="503">
+			<apikit:exception
+				value="java.lang.Exception" />
+			<set-property propertyName="Content-Type" value="application/json"
+				doc:name="Property" />
+			<set-payload value="{ &quot;message&quot;: &quot;Queue Service Unavailable&quot; }"
 				doc:name="Set Payload" />
 		</apikit:mapping>
 	</apikit:mapping-exception-strategy>
